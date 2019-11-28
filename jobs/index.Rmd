@@ -20,7 +20,7 @@ options(max.print = "70")
 # highlights: "tango", "pygments", "kate"
 ```
 
-Our stakeholder is interested in job growth in Fairfax County, VA between 2009 and 2017 at Census tract level. 
+Our stakeholder is interested in visualizing job growth in Fairfax County, VA between 2009 and 2017 at Census tract level. 
    
 # Getting the data
 We have just the dataset for that! Longitudinal Employer-Household Dynamics Origin-Destination Employment Statistics (<a href = "https://lehd.ces.census.gov/data/#lodes" target = "_blank">LODES</a>) Workplace Area Characteristics (WAC) data is available longitudinally and totals jobs by work Census block. We can aggregate numbers to the tract level. 
@@ -52,7 +52,7 @@ head(wac09)
 
 # Filtering to Fairfax County, VA
 
-Since we only care about job growth in Fairfax County, VA, we can use LODES' convenient geography crosswalk to select only the census blocks within the County. From the Census Bureau list of state Federal Information Processing Standard (<a href = "https://www.census.gov/geographies/reference-files/2017/demo/popest/2017-fips.html" target = "_blank">FIPS</a>) codes, we learn that the Virginia FIPS code is 51, and the Fairfax County code is 059. Given the composition of Census <a href = "https://www.census.gov/programs-surveys/geography/guidance/geo-identifiers.html" target = "_blank">geographic identifiers</a>, this means we need to filter our crosswalk to county (`cty`) code 51059.
+Since we only care about job growth in Fairfax County, VA, we can use LODES' convenient geography crosswalk to select just the census blocks within the County. From the Census Bureau list of state Federal Information Processing Standard (<a href = "https://www.census.gov/geographies/reference-files/2017/demo/popest/2017-fips.html" target = "_blank">FIPS</a>) codes, we learn that the Virginia FIPS code is 51, and the Fairfax County code is 059. Given the composition of Census <a href = "https://www.census.gov/programs-surveys/geography/guidance/geo-identifiers.html" target = "_blank">geographic identifiers</a>, this means we need to filter our crosswalk to county (`cty`) code 51059.
 
 ```{r warning = FALSE, message = FALSE}
 library(dplyr)

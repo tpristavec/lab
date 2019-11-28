@@ -1,0 +1,125 @@
+---
+title: "Opportunity Zones in Fairfax County, VA"
+author: "Teja Pristavec"
+date: "November 28, 2019"
+output:
+  html_document:
+    toc: true
+    theme: lumen
+    number_sections: yes
+    toc_float: yes
+    highlight: tango
+    df_print: tibble
+---
+
+```{r echo = FALSE, cache = FALSE}
+options(readr.show_progress = FALSE)
+options(max.print = "70")
+
+# themes: "cerulean", "lumen", "paper"
+# highlights: "tango", "pygments", "kate"
+```
+
+For this task, we want to visualize all opportunity zones in Fairfax County and their neighboring tracts. <a href = "https://www.irs.gov/newsroom/opportunity-zones-frequently-asked-questions" target = "_blank">Opportunity zones</a> are select low-income Census tracts eligible for investment incentives, and there are nine <a href = "https://www.fairfaxcounty.gov/health-humanservices/opportunity-zones" target = "_blank">within Fairfax County, VA</a>.
+
+# Getting the data
+
+Our first step is to request Fairfax County geography from `tigris`. We look for tracts in Virginia, and for county Federal Information Processing Standard (<a href = "https://www.census.gov/geographies/reference-files/2017/demo/popest/2017-fips.html" target = "_blank">FIPS</a>) code 059. We convert the object to a simple feature (`sf`).
+
+```{r message = FALSE, warning = FALSE}
+library(tigris)
+library(sf)
+
+ffxcounty <- tracts("VA", county = "059", progress_bar = FALSE)
+ffxcounty <- st_as_sf(ffxcounty)
+```
+
+# Identifying tracts of interest
+
+Now that we have information on all tracts, we also want to create an indicator for opportunity zones, our tracts of interest. There are <a href = "https://www.fairfaxcounty.gov/health-humanservices/opportunity-zones" target = "_blank">nine in Fairfax County, VA</a> (North Hill, Hybla Valley, Mount Vernon Woods, South County Center, Willston Center, Bailey’s North/Glen Forest, Skyline Plaza, Herndon South, and Lake Anne), and their numbers are 4810, 4821, 4514, 4515.02, 4528.01, 4154.01, 4215, 4216, and 4218.
+
+```{r message = FALSE, warning = FALSE}
+library(dplyr)
+
+ffxcounty <- ffxcounty %>% mutate(opportunity = ifelse((NAME == 4810 |
+                                                        NAME == 4821 |
+                                                        NAME == 4514 |
+                                                        NAME == 4515.02 |
+                                                        NAME == 4528.01 |
+                                                        NAME == 4154.01 |
+                                                        NAME == 4215 |
+                                                        NAME == 4216 |
+                                                        NAME == 4218), 1, 0))
+```
+
+We'll also need to identify neighboring tracts to compare with opportunity zones. We create an object with our zones only, and then use `st_touches` to select tracts that share any zone's border. `st_touches` gives the result as a list, so we unlist it.
+
+```{r message = FALSE, warning = FALSE}
+# Identify zone neighbors
+zones <- ffxcounty %>% filter(opportunity == 1)
+
+neighbors <- st_touches(zones, ffxcounty, sparse = TRUE)
+neighborlist <- unlist(neighbors)
+
+# Create neighbor indicator
+ffxcounty <- ffxcounty %>% mutate(id = row_number(),
+                                  neighbor = ifelse(id %in% neighborlist, 1, 0))
+```
+
+# Plotting zones and neighbors
+
+Having defined our variables, we work on plotting. First, we make a test plot to make sure we're on the right track, and convert variables to factors so they'll be easier to work with later.
+
+```{r fig.width = 5, fig.height = 5, fig.align = "center"}
+# Test plot again with all indicators in same dataset
+plot(st_geometry(ffxcounty), col = "white")
+plot(st_geometry(ffxcounty[ffxcounty$neighbor == 1, ]), add = TRUE, col = "blue")
+plot(st_geometry(ffxcounty[ffxcounty$opportunity == 1, ]), add = TRUE, col = "red")
+
+# Convert to factor
+ffxcounty$neighbor <- as.factor(ffxcounty$neighbor)
+ffxcounty$opportunity <- as.factor(ffxcounty$opportunity)
+```
+
+With our prototype done, we put some effort into aesthetics. Before plotting, we need assign coordinates for our zone labels.
+
+```{r message = FALSE, warning = FALSE}
+# Select tracts
+labelzones <- ffxcounty[ffxcounty$opportunity == 1, ]
+labelneighbors <- ffxcounty[ffxcounty$neighbor == 1, ]
+
+# Get points
+point_zones <- st_point_on_surface(labelzones)
+point_neighbors <- st_point_on_surface(labelneighbors)
+
+# Retrieve coordinates
+coords_zone <- as.data.frame(st_coordinates(point_zones))
+coords_zone$name <- point_zones$NAME
+
+coords_neighbor <- as.data.frame(st_coordinates(point_neighbors))
+coords_neighbor$name <- point_neighbors$NAME
+```
+
+We add these labels to our final plot with `geom_label_repel`.
+
+```{r message = FALSE, warning = FALSE, fig.width = 10, fig.height = 10, fig.align = "center"}
+library(ggplot2)
+library(ggthemes)
+library(ggrepel)
+library(scales)
+
+ggplot() +
+  geom_sf(data = ffxcounty, size = 0.2) +
+  geom_sf(data = ffxcounty[ffxcounty$neighbor == 1, ], aes(fill = "#440154")) +
+  geom_sf(data = ffxcounty[ffxcounty$opportunity == 1, ], aes(fill = "#FDE725"))  +
+  geom_label_repel(data = coords_zone, aes(X, Y, label = name), 
+                   colour = "black", nudge_x = 3, segment.size = 0.5) + 
+  labs(title = "Fairfax County Opportunity Zones and Neighboring Tracts") +
+  theme_map() +
+  theme(plot.title = element_text(size = 16, face = "bold"),
+        legend.title = element_text(size = 11, face = "bold"),
+        legend.text = element_text(size = 11),
+        legend.position = c(0.1, 0.1)) +
+  scale_fill_identity(name = "Tract Type", guide = "legend", 
+                      labels = c("Neighboring Tract", "Opportunity Zone")) 
+```
