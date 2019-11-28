@@ -1,0 +1,207 @@
+---
+title: "Tract-Level Job Growth in Fairfax County, VA"
+author: "Teja Pristavec"
+date: "November 28, 2019"
+output:
+  html_document:
+    toc: true
+    theme: lumen
+    number_sections: yes
+    toc_float: yes
+    highlight: tango
+    df_print: tibble
+---
+
+```{r echo = FALSE, cache = FALSE}
+options(readr.show_progress = FALSE)
+options(max.print = "70")
+
+# themes: "cerulean", "lumen", "paper"
+# highlights: "tango", "pygments", "kate"
+```
+
+Our stakeholder is interested in job growth in Fairfax County, VA between 2009 and 2017 at Census tract level. 
+   
+# Getting the data
+We have just the dataset for that! Longitudinal Employer-Household Dynamics Origin-Destination Employment Statistics (<a href = "https://lehd.ces.census.gov/data/#lodes" target = "_blank">LODES</a>) Workplace Area Characteristics (WAC) data is available longitudinally and totals jobs by work Census block. We can aggregate numbers to the tract level. 
+
+After digging through the <a href = "https://lehd.ces.census.gov/data/lodes/LODES7/LODESTechDoc7.4.pdf" target = "_blank">technical documentation</a>, I establish that I need the WAC for Virginia, and download datasets `va_wac_S000_JT00_2009.csv` and `va_wac_S000_JT00_2017.csv` containing job information for 2009 and 2017. Since we want to plot job growth, the `va_xwalk.csv` geography crosswalk available on the same website will also come in handy.
+
+I read in the data, specifying column type in WAC files for variables containing geographic identifiers. We want to read these in as character to prevent losing leading zeros in state FIPS codes. In the geography crosswalk, latitude and longitude variables should be read in as doubles, and the rest are character.
+
+```{r warning = FALSE, message = FALSE}
+library(readr)
+
+# Workplace area characteristics
+wac09 <- read_csv("va_wac_S000_JT00_2009.csv", col_names = TRUE, 
+                  cols(w_geocode = "c", createdate = "c", .default = col_double()))
+wac17 <- read_csv("va_wac_S000_JT00_2017.csv", col_names = TRUE, 
+                  cols(w_geocode = "c", createdate = "c", .default = col_double()))
+
+# Geography crosswalk
+xwalk <- read_csv("va_xwalk.csv", col_names = TRUE, 
+                  cols(blklatdd = "d", blklondd = "d", .default = col_character()))
+```
+
+The WAC files contain information about the number of jobs in each Virginia census block by characteristics like worker age, earnings, job sector, race, educational attainment.
+
+```{r}
+head(wac09)
+```
+
+
+# Filtering to Fairfax County, VA
+
+Since we only care about job growth in Fairfax County, VA, we can use LODES' convenient geography crosswalk to select only the census blocks within the County. From the Census Bureau list of state Federal Information Processing Standard (<a href = "https://www.census.gov/geographies/reference-files/2017/demo/popest/2017-fips.html" target = "_blank">FIPS</a>) codes, we learn that the Virginia FIPS code is 51, and the Fairfax County code is 059. Given the composition of Census <a href = "https://www.census.gov/programs-surveys/geography/guidance/geo-identifiers.html" target = "_blank">geographic identifiers</a>, this means we need to filter our crosswalk to county (`cty`) code 51059.
+
+```{r warning = FALSE, message = FALSE}
+library(dplyr)
+
+# Filter geography crosswalk to Fairfax County block groups only
+xwalk_ffx <- xwalk %>% filter(cty == "51059")
+```
+
+We also get rid of some columns we don't need, and take a look at the data.
+
+```{r}
+# Select relevant columns
+xwalk_ffx <- xwalk_ffx %>% select(tabblk2010, st, stusps, stname, 
+                                  cty, ctyname, trct, trctname, 
+                                  bgrp, bgrpname, blklatdd, blklondd)
+
+# Look at the data
+head(xwalk_ffx)
+```
+
+Our next step is to join the 2009 and 2017 WAC files with the crosswalk in a way that only retains information for Fairfax County block groups. A `left_join` will keep all rows (that is, census blocks) from `xwalk_ffx`, and only add columns from matching rows in `wac09` and `wac17`. Since our WAC and crosswalk geographic identifier columns have different names, we also specify the join columns by name.
+
+```{r}
+# Select relevant columns
+wac09_ffx <- left_join(xwalk_ffx, wac09, by = c("tabblk2010" = "w_geocode"))
+wac17_ffx <- left_join(xwalk_ffx, wac17, by = c("tabblk2010" = "w_geocode"))
+```
+
+
+# Aggregating to tract level
+
+We won't join data from 2009 and 2017 just yet since variables have the same names in both data files. Instead, we aggregate job information from block group to tract level first. We are interested in all job types across all sectors, so we use information from variable `C000`, "total number of jobs." To calculate the variable, we first group our block groups by tract using the handy `trct` identifier, create the variable dropping block groups with missing information, remove some columns we won't need, and finally select only one row per tract (since each block group carries the same tract information). We do so for both years of data. 
+
+```{r}
+# 2009
+wac09_ffx_tract <- wac09_ffx %>% arrange(trct) %>%
+                                 group_by(trct) %>% 
+                                 mutate(job09_all = sum(C000, na.rm = TRUE)) %>%
+                                 ungroup() %>%
+                                 select(cty, ctyname, trct, trctname, job09_all) %>% 
+                                 group_by(trct) %>% 
+                                 slice(1)
+                                 
+# 2017
+wac17_ffx_tract <- wac17_ffx %>% arrange(trct) %>%
+                                 group_by(trct) %>% 
+                                 mutate(job17_all = sum(C000, na.rm = TRUE)) %>%
+                                 ungroup() %>%
+                                 select(cty, ctyname, trct, trctname, job17_all) %>% 
+                                 group_by(trct) %>% 
+                                 slice(1)
+```
+
+We now have two dataframes -- one with total job number in 2009, and one for 2017 -- with only our variables of interest and one row per Fairfax County tract. 
+
+```{r}
+# 2009
+head(wac09_ffx_tract)
+                                 
+# 2017
+head(wac17_ffx_tract)
+```
+
+We can perform the join.
+
+```{r}
+# Join 2009 and 2017 data
+wac0917 <- left_join(wac09_ffx_tract, wac17_ffx_tract, 
+                     by = c("cty", "ctyname", "trct", "trctname"))
+```
+
+
+# Getting shapefiles
+
+Since we want to plot our final product, we'll have to download Fairfax County shapefiles. We already know the Fairfax County FIPS code, and we can request these files using `tigris`. The download will give us a `sp` object, but we prefer to use simple features (`sf`), so we also perform a conversion.
+
+```{r warning = FALSE, message = FALSE}
+library(tigris)
+library(sf)
+
+# Get tract geography and convert to sf
+ffxcounty <- tracts("VA", county = "059", progress_bar = FALSE)
+ffxcounty <- st_as_sf(ffxcounty)
+
+head(ffxcounty)
+```
+
+From here, it's straightfoward to join our Fairfax County 2009/17 job data with the geography. Again, our geographic identifier column names differ, so we specify them explicitly. We also fix our coordinate reference system ([https://rspatial.org/raster/spatial/6-crs.html](CRS)) for plotting later.
+
+```{r}
+# Join data with geography
+wac0917geo <- left_join(ffxcounty, wac0917, by = c("GEOID" = "trct"))
+
+# Check CRS
+st_crs(wac0917geo)
+wac0917geo <- wac0917geo %>% st_transform("+proj=longlat +datum=WGS84")
+```
+
+
+# Plotting job growth
+
+First, we calculate the continuous 2009-2017 percentage growth variable, and make a categorical one after inspecting the distribution.
+
+```{r}
+# Calculate growth (%) [continuous]
+change <- wac0917geo %>% mutate(chg_jobs = ((job17_all*100) / job09_all) - 100)
+
+# Categorize for better color discrimination
+summary(change$chg_jobs)
+
+change <- change %>% mutate (jobcat = case_when(chg_jobs <= -50 ~ "<= -50%",
+                                                chg_jobs >-50 & chg_jobs <=0 ~ "-49-0%",
+                                                chg_jobs >0 & chg_jobs <=50 ~ "1-50%",
+                                                chg_jobs >51 & chg_jobs <=100 ~ "51-100%",
+                                                chg_jobs >100 & chg_jobs <=150 ~ "101-150%",
+                                                chg_jobs >150 ~ ">= 150%"))
+change$jobcat <- factor(change$jobcat, 
+                        levels = c("<= -50%", "-49-0%", "1-50%", "51-100%", "101-150%", ">= 150%"))
+```    
+
+Before we plot our data, we want to find a good palette. We need a diverging palette to display two extremes and red for decline in jobs with green for growth would be nice, but we want to be colorblind-friendly. We have two decline and four growth categories in our variable, so we'll request a palette of 8 colors.
+
+```{r fig.width = 5, fig.height = 2, fig.align = "center", warning = FALSE, message = FALSE}
+library(ggplot2)
+library(ggthemes)
+library(RColorBrewer)
+
+# Let's go with pink and green
+display.brewer.pal(8, "PiYG")
+brewer.pal(8, "PiYG")
+```
+
+Finally, we plot! 
+
+```{r fig.width = 10, fig.height = 10, fig.align = "center"}
+# Fairfax County 2009 - 2017 job growth plot
+ggplot(data = change) +
+  geom_sf(aes(fill = jobcat), size = 0.001) +
+  labs(title = "Percent change in number of jobs", 
+       subtitle = "Data shown for change from 2009 to 2017 in Fairfax County by tract.",
+       caption = "Source: LEHD Origin-Destination Employment Statistics (LODES) data.") +
+  theme_map() +
+  theme(plot.title = element_text(size = 16, face = "bold"),
+        legend.title = element_text(size = 11, face = "bold"),
+        legend.text = element_text(size = 11))  +
+  scale_fill_manual(name = "Percent change", values = c("<= -50%" = "#F1B6DA",
+                                                        "-49-0%" = "#FDE0EF",
+                                                        "1-50%" = "#E6F5D0",
+                                                        "51-100%" = "#B8E186",
+                                                        "101-150%" = "#7FBC41",
+                                                        ">= 150%" = "#4D9221"))
+```
