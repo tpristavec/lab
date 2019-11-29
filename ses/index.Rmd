@@ -1,0 +1,197 @@
+---
+title: "Comparing Middlesex County, NJ and Arlington County, VA"
+author: "Teja Pristavec"
+date: "November 29, 2019"
+output:
+  html_document:
+    toc: true
+    theme: lumen
+    number_sections: yes
+    toc_float: yes
+    highlight: tango
+    df_print: tibble
+---
+
+```{r echo = FALSE, cache = FALSE, message = FALSE, warning = FALSE}
+library(tidycensus)
+census_api_key("548d39e0315b591a0e9f5a8d9d6c1f22ea8fafe0") # Teja's key
+```
+
+We want to compare Middlesex County, NJ and Arlington County, VA on select socioeconomic characteristics. We use 2013-17 <a href= "https://www.census.gov/programs-surveys/acs/guidance/estimates.html" target = "_blank">5 year estimates</a> from the <a href = "https://www.census.gov/programs-surveys/acs/technical-documentation.html" target = "_blank">American Community Survey</a> (ACS), which contains detailed population data. 
+
+# Getting ACS data
+
+ACS is structured as <a href = "https://factfinder.census.gov/faces/affhelp/jsf/pages/metadata.xhtml?lang=en&type=dataset&id=dataset.en.ACS_17_5YR" target = "_blank">tables</a>, so we'll first specify which tables and table rows we want to request. To calculate population proportions later, we'll need both the rows of interest (e.g. Hispanic population) and rows with population totals (e.g. total population).
+
+```{r}
+acsvars <- c(
+  # educational attainment (age 25+)
+  "B15003_001", "B15003_002", "B15003_003", "B15003_004", "B15003_005", 
+  "B15003_006", "B15003_007", "B15003_008", "B15003_009", "B15003_010", 
+  "B15003_011", "B15003_012", "B15003_013", "B15003_014", "B15003_015", 
+  "B15003_016", "B15003_017", "B15003_018",
+  # income under poverty level
+  "B17020_001", "B17020_002",
+  # age 65+
+  "B01001_001", "B01001_020", "B01001_021", "B01001_022", "B01001_023",
+  "B01001_024", "B01001_025", "B01001_044", "B01001_045", "B01001_046", 
+  "B01001_047", "B01001_048", "B01001_049",
+  # hispanic
+  "B03003_001", "B03003_003",
+  # black
+  "B02001_001", "B02001_003",
+  # family households
+  "B09019_002",  "B09019_003",
+  # foreign-born
+  "B05002_001", "B05002_013",
+  # public assistance or food stamps/snap
+  "B19058_001", "B19058_002",
+  # in labor force
+  "B23025_001", "B23025_002",
+  # renters
+  "B25003_001", "B25003_003")
+```    
+
+We load `tidycensus` and make a call to the ACS API. We call states and counties by their Federal Information Processing Standard (<a href = "https://www.census.gov/geographies/reference-files/2017/demo/popest/2017-fips.html" target = "_blank">FIPS</a>) codes. 
+
+```{r message = FALSE, warning = FALSE}
+library(tidycensus)
+
+# Get county-level variables from ACS 2013-17 for NJ
+acsdata_nj <- get_acs(geography = "county", state = 34, county = 023, 
+                      variables = acsvars, year = 2017, survey = "acs5", 
+                      cache_table = TRUE, output = "wide")
+
+# Get county-level variables from ACS 2013-17 for VA
+acsdata_va <- get_acs(geography = "county", state = 51, county = 013, 
+                      variables = acsvars,  year = 2017, survey = "acs5", 
+                      cache_table = TRUE, output = "wide")
+```
+
+Each call returns a single row of data -- we requested information at county level for one county, once for NJ and once for VA -- with estimates on select variables (names ending with `E`) and their corresponding 90% margins of error (`M`). We'll discard the margins of error for this exercise and work with point estimates only.
+
+```{r}
+head(names(acsdata_nj))
+```
+
+# Calculating population proportions
+
+Since we don't want to keep the original variables, we use `transmute` instead of `mutate` when calculating population proportions on variables of interest (that is, dividing the count of the category of interest with the population total for that category).
+
+```{r message = FALSE, warning = FALSE}
+library(dplyr)
+
+# Calculate proportions: NJ
+acs_nj <- acsdata_nj %>% transmute(area = "NJ",
+            hs_or_less = (B15003_002E + B15003_003E + B15003_004E + B15003_005E + 
+                          B15003_006E + B15003_007E + B15003_008E + B15003_009E + 
+                          B15003_010E + B15003_011E + B15003_012E + B15003_013E + 
+                          B15003_014E + B15003_015E + B15003_016E + B15003_017E + 
+                          B15003_018E) / B15003_001E,
+            poverty = B17020_002E / B17020_001E,
+            age_65_older = (B01001_020E + B01001_021E + B01001_022E + B01001_023E + 
+                            B01001_024E + B01001_025E + B01001_044E + B01001_045E + 
+                            B01001_046E + B01001_047E + B01001_048E + B01001_049E) / 
+                            B01001_001E,
+            hispanic = B03003_003E / B03003_001E,
+            black = B02001_003E / B02001_001E,
+            family = B09019_003E / B09019_002E,
+            foreign = B05002_013E / B05002_001E,
+            assistance = B19058_002E / B19058_001E,
+            laborforce = B23025_002E / B23025_001E,  
+            renters = B25003_003E / B25003_001E)
+
+# Calculate proportions: VA
+acs_va <- acsdata_va %>% transmute(area = "VA",
+            hs_or_less = (B15003_002E + B15003_003E + B15003_004E + B15003_005E + 
+                          B15003_006E + B15003_007E + B15003_008E + B15003_009E + 
+                          B15003_010E + B15003_011E + B15003_012E + B15003_013E + 
+                          B15003_014E + B15003_015E + B15003_016E + B15003_017E + 
+                          B15003_018E) / B15003_001E,
+            poverty = B17020_002E / B17020_001E,
+            age_65_older = (B01001_020E + B01001_021E + B01001_022E + B01001_023E + 
+                            B01001_024E + B01001_025E + B01001_044E + B01001_045E + 
+                            B01001_046E + B01001_047E + B01001_048E + B01001_049E) / 
+                            B01001_001E,
+            hispanic = B03003_003E / B03003_001E,
+            black = B02001_003E / B02001_001E,
+            family = B09019_003E / B09019_002E,
+            foreign = B05002_013E / B05002_001E,
+            assistance = B19058_002E / B19058_001E,
+            laborforce = B23025_002E / B23025_001E,  
+            renters = B25003_003E / B25003_001E)
+```
+
+We bind rows and get a single dataframe with values for Middlesex County, NJ and Arlington County, VA.
+
+```{r}
+acsdata <- rbind(acs_nj, acs_va)
+head(acsdata)
+```
+
+# Lolli-plotting
+
+Before we can create a lolliplot chart, we'll have to reshape our data to long. We'll also add a range midpoint variable that we can use to sort our plot later, and clean up our `names` column.
+
+```{r message = FALSE, warning = FALSE}
+library(tidyr)
+
+# Pivot to long
+acs_nj_long <- acs_nj %>% 
+               pivot_longer(cols = 2:11, values_to = "val13") %>% 
+               select(-area)
+
+acs_va_long <- acs_va %>% 
+               pivot_longer(cols = 2:11, values_to = "val17") %>%
+               select(-area)
+
+# Join and arrange by range mean
+ctydata <- left_join(acs_nj_long, acs_va_long, by = "name") %>%
+           mutate(meanpoint = (val13 + val17) / 2) %>%
+           arrange(desc(meanpoint))
+
+# Clean up names
+ctydata$name <- c("Family households", "In labor force", "Renters", "Foreign-born",
+                  "High school or less", "Hispanic", "Age 65+", "Black", "In poverty", 
+                  "Social assistance")
+
+ctydata$name <- factor(ctydata$name, 
+                       levels = c("Family households", "In labor force", "Renters", 
+                                  "Foreign-born", "High school or less", "Hispanic", 
+                                  "Age 65+", "Black", "In poverty", "Social assistance"))
+
+# Look at the data
+ctydata
+```
+
+We can now plot our data on a lollipop chart using `geom_point` for county data points and `geom_range` to add a line connecting them. We use `reorder` with our range midpoint variable to sort the plot, and `theme_ipsum` to get a clean graph. 
+
+```{r message = FALSE, warning = FALSE, fig.width = 10, fig.height = 7, fig.align = "center"}
+library(ggplot2)
+library(viridis)
+library(scales)
+library(forcats)
+library(hrbrthemes)
+
+# Plot
+ggplot(ctydata) +
+  geom_segment(aes(x = reorder(name, meanpoint), xend = name, y = val13, yend = val17), 
+               color = "darkgrey") +
+  geom_point(aes(x = reorder(name, meanpoint), y = val13, color = "Middlesex County, NJ"), 
+             size = 2) +
+  geom_point(aes(x = reorder(name, meanpoint), y = val17, color = "Arlington County, VA"), 
+             size = 2) +
+  coord_flip() +
+  theme_ipsum() +
+  scale_y_continuous(breaks = seq(0, 1, 0.20), limits = c(0, 1)) +
+  labs(x = "Socioeconomic characteristic", y = "Population proportion", 
+       caption = "Source: American Community Survey 2013-17 data.",
+       title = "County socioeconomic characteristics comparison") +
+  theme(legend.position = "bottom",
+        axis.title.x = element_text(size = 13),
+        axis.title.y = element_text(size = 13),
+        legend.title = element_text(size = 11, face = "bold"),
+        legend.text = element_text(size = 11)) +
+  scale_colour_manual(values = c("#002C6A", "#EAD357"), name = "County") 
+```
+
