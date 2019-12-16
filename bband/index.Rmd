@@ -202,11 +202,12 @@ data <- left_join(data, ruca, by = c("GEOID" = "Tract"))
 
 # Add urbanicity indicator
 data <- data %>% 
-  mutate(urbanicity = case_when((primRUCA == 1 | primRUCA == 2 | primRUCA == 3) ~ "Metropolitan",
-                                (primRUCA == 4 | primRUCA == 5 | primRUCA == 6) ~ "Micropolitan",
-                                (primRUCA == 7 | primRUCA == 8 | primRUCA == 9) ~ "Small town",
-                                (primRUCA == 10) ~ "Rural",
-                                (primRUCA == 99 | is.na(primRUCA)) ~ NA_character_))
+  mutate(urbanicity = case_when(
+    (primRUCA == 1 | primRUCA == 2 | primRUCA == 3) ~ "Metropolitan",
+    (primRUCA == 4 | primRUCA == 5 | primRUCA == 6) ~ "Micropolitan",
+    (primRUCA == 7 | primRUCA == 8 | primRUCA == 9) ~ "Small town",
+    (primRUCA == 10) ~ "Rural",
+    (primRUCA == 99 | is.na(primRUCA)) ~ NA_character_))
 data$urbanicity <- factor(data$urbanicity, 
                           levels = c("Rural", "Small town", "Micropolitan", "Metropolitan"))
 ```
@@ -340,12 +341,12 @@ library(ggplot2)
 library(ggthemes)
 
 # Plot contiguous states
-plot_main <- ggplot(data = contig) +
-  geom_sf(aes(fill = urban_any), size = 0.001) +
+plot_main <- ggplot() +
+  geom_sf(data = contig, aes(fill = urban_any), size = 0.001) +
   theme_map() +
   coord_sf(crs = st_crs(2163), 
            xlim = c(-2500000, 2500000), ylim = c(-2300000, 730000)) +
-  labs(title = "ACS and FCC Broadband Subscription Estimate Congruence by Tract", 
+  labs(title = "Tract-Level ACS and FCC Broadband Subscription Estimate Congruence", 
        subtitle = "Tracts with incongruent ACS and FCCC estimates shown in grey.",
        caption = "Note: FCC = Federal Communications Commission, December 2015. 
                   ACS = American Community Survey, 2013-17.
@@ -359,8 +360,8 @@ plot_main <- ggplot(data = contig) +
         legend.position = "top")
 
 # Plot Hawaii
-plot_hawaii <- ggplot(data = hawaii) +
-  geom_sf(aes(fill = urban_any), size = 0.001)  +
+plot_hawaii <- ggplot() +
+  geom_sf(data = hawaii, aes(fill = urban_any), size = 0.001)  +
   theme_map() +
   coord_sf(crs = st_crs(4135), 
            xlim = c(-161, -154), ylim = c(18, 23), expand = FALSE) +
@@ -370,8 +371,8 @@ plot_hawaii <- ggplot(data = hawaii) +
   theme(legend.position = "none")
 
 # Plot Alaska
-plot_alaska <- ggplot(data = alaska) +
-  geom_sf(aes(fill = urban_any), size = 0.001) +
+plot_alaska <- ggplot() +
+  geom_sf(data = alaska, aes(fill = urban_any), size = 0.001) +
   theme_map() +
   coord_sf(crs = st_crs(3467), 
            xlim = c(-2400000, 1600000), ylim = c(200000, 2500000), expand = FALSE) +
