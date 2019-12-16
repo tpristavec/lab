@@ -1,0 +1,399 @@
+---
+title: "Tract-level FCC and ACS Broadband Subscription Estimate Congruence"
+author: "Teja Pristavec"
+date: "December 6, 2019"
+output:
+  html_document:
+    toc: true
+    theme: lumen
+    number_sections: yes
+    toc_float: yes
+    highlight: tango
+    df_print: tibble
+---
+
+```{r echo = FALSE, cache = FALSE, message = FALSE, warning = FALSE}
+options(readr.show_progress = FALSE)
+options(readxl.show_progress = FALSE)
+options(max.print = "70")
+options(tigris_use_cache = TRUE)
+
+library(tidycensus)
+census_api_key("548d39e0315b591a0e9f5a8d9d6c1f22ea8fafe0") # Teja's key
+
+# themes: "cerulean", "lumen", "paper"
+# highlights: "tango", "pygments", "kate"
+```
+
+Internet at broadband speeds (defined as <a href = "https://docs.fcc.gov/public/attachments/FCC-18-10A1.pdf" target = "_blank">25mbps download and 3mbps upload</a>) is still not available to many Americans, but estimates differ on how many individuals are without access to broadband and thus limited in their ability to participate in an increasingly online world.  
+
+Typically, broadband availability estimates come from the Federal Communications Commission (FCC). The FCC provides an authoritative data source on broadband coverage and subscriptions that informs funding policies. However, the dataset has <a href = 
+"https://doi.org/10.1016/j.telpol.2011.12.006" target = "_blank">known limitations</a>. It reports a block group as having broadband available even if only one subscriber has it, if the provider is not currently providing coverage but could feasibly start doing so in an area within a standard service interval, and it collects advertised rather than actual internet speeds. These factors contribute to potential coverage overestimation. Whereas the FCC claims that approximately 25 million Americans do not have broadband access, the <a a href = "https://news.microsoft.com/rural-broadband/" target = "_blank">Microsoft Airband Initiative</a> finds that around 163 million Americans do not use internet at broadband speeds. FCC estimates may be <a href = "https://www.cfra.org/sites/www.cfra.org/files/publications/Map%20to%20Prosperity.pdf" target = "_blank">particularly unreliable</a> for <a href = "https://doi.org/10.1016/j.telpol.2011.12.006" target = "_blank">rural areas</a> and <a href = "https://www.gao.gov/assets/700/694386.pdf" target = "_blank">tribal lands</a>.
+
+In this task, we use supplementary household-level broadband subscription data from 5-year American Community Survey (ACS) estimates that became available in the past year to examine consistency with FCC estimates. We also use the US Department of Agriculture (USDA) Rural-Urban Commuting Area (RUCA) codes to highlight differences in subscription estimates by urban status.
+
+# FCC subscription estimates
+The FCC collects broadband data bi-annually from internet service providers using <a href = "https://transition.fcc.gov/form477/477inst.pdf" target = "_blank">Form 477</a>. <a href = "https://www.fcc.gov/internet-access-services-reports" target = "_blank">Subscription data</a> is available at the tract level. Since ACS broadband subscription estimates are only available in 5-year 2013-17 data from ACS, we use FCC data from "Internet Access Services as of 12/31/15," conceptualizing 2015 as a faux midpoint. We download and read in the file available under <a href = "https://www.fcc.gov/reports-research/maps/residential-fixed-connections-10-mbps-1-mbps-december-2015/" target = "_blank">Residential Fixed Connections per 1,000 Households by Census Tract</a>. 
+
+The file contains the number of subscriptions at the 200kpbs and 10mbps thresholds per 1,000 households given in subscription bins (e.g., between 200 and 400 subscriptions per 1,000 households in a particular tract). After reading in the data, we create a categorical variable for each bin's minimum and maximum number of subscriptions. Since there is variability in how ACS householders interpret "broadband," we'll examine both the FCC 200kbps and the 10mbps thresholds.
+
+```{r warning = FALSE, message = FALSE}
+library(readr)
+library(dplyr)
+
+# pcat_all: Residential Fixed High-Speed Connections over 200 kbps 
+#           in at least one direction per per 1,000 Households
+# pcat_10x1: Residential Fixed High-Speed Connections at least 10 Mbps 
+#            downstream and at least 1 Mbps upstream per 1,000 Households 
+
+# Code  Connections per 1,000 HHs
+# 0     Zero
+# 1     Zero < x <= 200
+# 2     200 < x <=400
+# 3     400 < x <=600
+# 4     600 < x <=800
+# 5     800 < x
+
+# Read in
+fcc <- read_csv("tract_map_dec_2015.csv", col_names = TRUE, cols(tractcode = "c"))
+
+# Recode
+fcc <- fcc %>% mutate(conn10min = case_when(pcat_10x1 == 0 ~ 0,
+                                            pcat_10x1 == 1 ~ 0,
+                                            pcat_10x1 == 2 ~ 200/1000,
+                                            pcat_10x1 == 3 ~ 400/1000,
+                                            pcat_10x1 == 4 ~ 600/1000,
+                                            pcat_10x1 == 5 ~ 800/1000),
+                      conn10max = case_when(pcat_10x1 == 0 ~ 0,
+                                            pcat_10x1 == 1 ~ 200/1000,
+                                            pcat_10x1 == 2 ~ 400/1000,
+                                            pcat_10x1 == 3 ~ 600/1000,
+                                            pcat_10x1 == 4 ~ 800/1000,
+                                            pcat_10x1 == 5 ~ 1),
+                      conn200min = case_when(pcat_all == 0 ~ 0,
+                                             pcat_all == 1 ~ 0,
+                                             pcat_all == 2 ~ 200/1000,
+                                             pcat_all == 3 ~ 400/1000,
+                                             pcat_all == 4 ~ 600/1000,
+                                             pcat_all == 5 ~ 800/1000),
+                      conn200max = case_when(pcat_all == 0 ~ 0,
+                                             pcat_all == 1 ~ 200/1000,
+                                             pcat_all == 2 ~ 400/1000,
+                                             pcat_all == 3 ~ 600/1000,
+                                             pcat_all == 4 ~ 800/1000,
+                                             pcat_all == 5 ~ 1))
+
+# Look at the data
+head(fcc)
+```
+
+# ACS subscription estimates
+As our second dataset, we use household-level information on broadband subscriptions from 5-year American Community Survey (ACS) data. Information on households with broadband became available with sufficient geographic granularity for the first time in 2019, allowing for a comparison with FCC. 
+
+ACS is structured as <a href = "https://factfinder.census.gov/faces/affhelp/jsf/pages/metadata.xhtml?lang=en&type=dataset&id=dataset.en.ACS_17_5YR" target = "_blank">tables</a>, so we have to specify which tables and table rows we want to request. <a href = "https://factfinder.census.gov/faces/affhelp/jsf/pages/metadata.xhtml?lang=en&type=table&id=table.en.ACS_17_5YR_B28002" target = "_blank">Table B28002</a> contains information on the presence and types of internet subscriptions in households, for all households. 
+
+To calculate population proportions, we need to request two rows from this table: row 007 with the category of interest (number of households that reporting having "broadband such as cable, fiber optic or DSL"), and row 001 with the total number of households. We request data for all states. Since ACS provides a point estimate with a <a href = "https://www.census.gov/programs-surveys/acs/guidance/training-presentations/acs-moe.html" target = "_blank">margin of error</a>, in the same unit as the variable, we can calculate a range of plausible subscriptions.
+
+```{r warning = FALSE, message = FALSE, results = "hide"}
+library(tidycensus)
+library(tigris)
+
+# Table B28002:
+# PRESENCE AND TYPES OF INTERNET SUBSCRIPTIONS IN HOUSEHOLD
+# Universe: Households
+# Row 001: Number of households
+# Row 007: Broadband such as cable, fiber optic or DSL
+
+# State FIPS
+state_fips <- unique(fips_codes$state)[1:51]
+
+# ACS variables
+acsvars <- c("B28002_001", "B28002_007")
+
+# Get tract-level variables from ACS 2013-2017 (5-year)
+acs <- get_acs(geography = "tract", state = state_fips[1], variables = acsvars, 
+               year = 2017, survey = "acs5", cache_table = TRUE, output = "wide", 
+               geometry = TRUE, keep_geo_vars = TRUE)
+for(i in 2:length(state_fips)){
+  tmp <- get_acs(geography = "tract", state = state_fips[i], variables = acsvars, 
+                 year = 2017, survey = "acs5", cache_table = TRUE, output = "wide",
+                 geometry = TRUE, keep_geo_vars = TRUE)
+  acs <- rbind(acs, tmp)
+}
+
+# Calculate variable min & max (ACS defaults to 90% confidence interval)
+acs <- acs %>% mutate(bband = B28002_007E / B28002_001E,
+                      bbandmin = (B28002_007E - B28002_001M) / B28002_001E,
+                      bbandmax = (B28002_007E + B28002_001M) / B28002_001E)
+```
+
+# Join FCC and ACS 
+Since we can only compare FCC and ACS data where we have estimates from each dataset, we examine missingness before joining the data. We find that 1053 tracts in FCC don't have ACS information, and 342 ACS tracts are missing FCC information. We do a `full_join` and then drop tracts missing one or both estimates. 
+
+```{r warning = FALSE, message = FALSE}
+# How many FCC tracts are not in ACS and vice versa?
+sum(!is.element(fcc$tractcode, acs$GEOID)) # 1053 FCC tracts do not have ACS information.
+sum(!is.element(acs$GEOID, fcc$tractcode)) # 342 ACS tracts do not have FCC information.
+
+# How many tracts total in each dataset?
+nrow(acs) # 73056 tracts (of which 342 not in FCC)
+nrow(fcc) # 73767 tracts (of which 1053 not in ACS)
+
+# Join (full, see above)
+data <- full_join(acs, fcc, by = c("GEOID" = "tractcode"))
+anyDuplicated(data$GEOID)
+
+head(data)
+
+# Look at missings
+sum(is.na(data$bband))
+sum(is.na(data$conn10min))
+sum(is.na(data$conn10max))
+
+# Filter to ACS+FCC information available
+data <- data %>% filter(!is.na(bband) & !is.na(conn10min))
+```
+
+# Add RUCA codes
+We are particularly interested in estimate congruence by urbanicity. To examine how frequently FCC and ACS estimates agree in rural versus urban areas, we add <a href = "https://www.ers.usda.gov/data-products/rural-urban-commuting-area-codes.aspx" target = "_blank">USDA Rural-Urban Commuting Area (RUCA) codes</a>, available at tract level, to our dataset. We check missingness and discard the commuting information to create a variable with information on urbanicity only.
+
+```{r warning = FALSE, message = FALSE}
+library(readxl)
+
+# Documentation: 
+# https://www.ers.usda.gov/data-products/rural-urban-commuting-area-codes/documentation/
+# 1	Metropolitan area core: primary flow within an urbanized area (UA)
+# 2	Metropolitan area high commuting: primary flow 30% or more to a UA
+# 3	Metropolitan area low commuting: primary flow 10% to 30% to a UA
+# 4	Micropolitan area core: primary flow within an urban cluster of 10,000 to 49,999 (large UC)
+# 5	Micropolitan high commuting: primary flow 30% or more to a large UC
+# 6	Micropolitan low commuting: primary flow 10% to 30% to a large UC
+# 7	Small town core: primary flow within an urban cluster of 2,500 to 9,999 (small UC)
+# 8	Small town high commuting: primary flow 30% or more to a small UC
+# 9	Small town low commuting: primary flow 10% to 30% to a small UC
+# 10 Rural areas: primary flow to a tract outside a UA or UC
+# 99 Not coded: Census tract has zero population and no rural-urban identifier information
+
+# Read in, skip row #1 because it is a note
+ruca <- read_excel("ruca2010revised.xlsx", col_names = TRUE, progress = readxl_progress(), skip = 1)
+
+names(ruca)[1] <- "StateCounty"
+names(ruca)[2] <- "State"
+names(ruca)[3] <- "County"
+names(ruca)[4] <- "Tract"
+names(ruca)[5] <- "primRUCA"
+names(ruca)[6] <- "secRUCA"
+names(ruca)[7] <- "TractPop10"
+names(ruca)[8] <- "LandSqmile10"
+names(ruca)[9] <- "PopDens10"
+
+# Number of tracts in RUCA
+nrow(ruca) # 74002 tracts
+
+# How many data tracts are not in RUCA and vice versa?
+sum(!is.element(data$GEOID, ruca$Tract)) # All data tracts are in RUCA.
+sum(!is.element(ruca$Tract, data$GEOID)) # 1788 RUCA tracts are not in data.
+
+# Look at the data
+head(ruca)
+
+# Join
+data <- left_join(data, ruca, by = c("GEOID" = "Tract"))
+
+# Add urbanicity indicator
+data <- data %>% 
+  mutate(urbanicity = case_when((primRUCA == 1 | primRUCA == 2 | primRUCA == 3) ~ "Metropolitan",
+                                (primRUCA == 4 | primRUCA == 5 | primRUCA == 6) ~ "Micropolitan",
+                                (primRUCA == 7 | primRUCA == 8 | primRUCA == 9) ~ "Small town",
+                                (primRUCA == 10) ~ "Rural",
+                                (primRUCA == 99 | is.na(primRUCA)) ~ NA_character_))
+data$urbanicity <- factor(data$urbanicity, 
+                          levels = c("Rural", "Small town", "Micropolitan", "Metropolitan"))
+```
+
+# Find congruent estimates
+
+FCC provides subscription bins with a minimum and maximum subscription number, and ACS provides a point estimate with a margin of error. For this exercise, since FCC has known issues, we will assume that ACS represents the "ground truth" that might help identify tracts for which FCC information is reliable. We want to be able to find tracts where ACS plausible subscription ranges fall entirely within the FCC-provided bin. 
+
+To do so, we first prepare our data to work with intervals. We need to obtain two-column dataframes containing only the interval beginning and end for each dataset, remove geography, and multiply our range beginning and endpoints (currently represented as proportions) by a number larger than 100 to obtain natural numbers for use with `IRanges`. We multiply by 10,000 to also preserve decimal places.
+
+```{r warning = FALSE, message = FALSE}
+library(IRanges)
+library(sf)
+
+# Need two-column dataframes with nothing else
+test_acs <- data %>% select(bbandmin, bbandmax) %>% 
+                     st_set_geometry(NULL)
+                    
+test_fcc10 <- data %>% select(conn10min, conn10max) %>% 
+                       st_set_geometry(NULL)
+
+test_fcc200 <- data %>% select(conn200min, conn200max) %>% 
+                        st_set_geometry(NULL)
+
+
+# Can only work with whole numbers
+startacs <- test_acs$bbandmin*100000
+endacs <- test_acs$bbandmax*100000
+test_acs <- IRanges(start = startacs, end = endacs)
+
+startfcc10 <- test_fcc10$conn10min*100000
+endfcc10 <- test_fcc10$conn10max*100000
+test_fcc10 <- IRanges(start = startfcc10, end = endfcc10)
+
+startfcc200 <- test_fcc200$conn200min*100000
+endfcc200 <- test_fcc200$conn200max*100000
+test_fcc200 <- IRanges(start = startfcc200, end = endfcc200)
+
+# This is what the interval dfs look like
+head(test_acs)
+```
+
+Since we need pairwise comparisons of only each n-th FCC interval row with the corresponding n-th ACS interval row, `findOverlaps` will not be useful for us. Instead, te employ the `countOverlaps` function, which returns a 1 if an overlap is found and 0 otherwise. Let's test out a row-wise comparison.
+
+```{r}
+# Test
+countOverlaps(test_acs[1], test_fcc10[1])
+countOverlaps(test_acs[2], test_fcc10[2])
+countOverlaps(test_acs[3], test_fcc10[3])
+```
+
+Knowing our approach works, we can now write a (somewhat slow -- I am not a computer scientist, forgive me) function to compare each n-th FCC interval row with the n-th ACS interval row and identify whether the ACS interval (point estimate with margin of error) falls entirely within the FCC 200kbps bin, or the FCC 10mbps bin. 
+
+```{r warning = FALSE, message = FALSE}
+# ACS is completely within FCC 10
+overlap_acswithinfcc10 <- as.data.frame(countOverlaps(test_acs[1], test_fcc10[1]), 
+                                        type = "within")
+for(i in 2:length(test_acs@start)){
+  tmp <- countOverlaps(test_acs[i], test_fcc10[i], type = "within")
+  overlap_acswithinfcc10 <- rbind(overlap_acswithinfcc10, tmp)
+}
+
+names(overlap_acswithinfcc10)[1] <- "acs_within_fcc10"
+overlap_acswithinfcc10$acs_within_fcc10 <- as.factor(overlap_acswithinfcc10$acs_within_fcc10)
+
+# ACS is completely within FCC200
+overlap_acswithinfcc200 <- as.data.frame(countOverlaps(test_acs[1], test_fcc200[1]), 
+                                         type = "within")
+for(i in 2:length(test_acs@start)){
+  tmp <- countOverlaps(test_acs[i], test_fcc200[i], type = "within")
+  overlap_acswithinfcc200 <- rbind(overlap_acswithinfcc200, tmp)
+}
+
+names(overlap_acswithinfcc200)[1] <- "acs_within_fcc200"
+overlap_acswithinfcc200$acs_within_fcc200 <- as.factor(overlap_acswithinfcc200$acs_within_fcc200)
+```
+
+# Map congruence
+
+For mapping, we'll have to re-join our overlap dataframe with geographic information.
+
+```{r}
+# Create df with intervals
+overlap_geo <- as.data.frame(data$GEOID)
+names(overlap_geo)[1] <- "GEOID"
+overlap_geo$GEOID <- as.character(data$GEOID)
+
+overlap_df <- cbind(overlap_geo, overlap_acswithinfcc200, overlap_acswithinfcc10)
+
+# Left join with data (that has geography)
+data_int <- left_join(data, overlap_df, by = "GEOID")
+```
+
+Next, we create a variable that'll help us highlight only the tracts where the ACS range falls fully within either the FCC 200kbps or the FCC 10mbps range, while converying information on tract urbanicity from the RUCA codes we previously added.
+
+```{r}
+# Add conditional urbanicity indicators for plots
+data_int <- data_int %>% 
+  mutate(urban_any = case_when(
+    (acs_within_fcc200 == 0 & acs_within_fcc10 == 0) ~ NA_character_,
+    (acs_within_fcc200 == 1 | acs_within_fcc10 == 1) & urbanicity == "Rural" ~ "Rural", 
+    (acs_within_fcc200 == 1 | acs_within_fcc10 == 1) & urbanicity == "Small town" ~ "Small town", 
+    (acs_within_fcc200 == 1 | acs_within_fcc10 == 1) & urbanicity == "Micropolitan" ~ "Micropolitan", 
+    (acs_within_fcc200 == 1 | acs_within_fcc10 == 1) & urbanicity == "Metropolitan" ~ "Metropolitan"))
+data_int$urban_any <- factor(data_int$urban_any, 
+                             levels = c("Rural", "Small town", "Micropolitan", "Metropolitan"))
+```
+
+We also need to split our map in order to fit Alaska and Hawaii on the same plot as the contiguous states. We use state FIPS codes to filter Alaska and Hawaii data into separate dataframes.
+
+```{r}
+# 2 = Alaska, 15 = Hawaii, American Samoa = 60, Guam = 66, Mariana Islands = 69, 
+# Puerto Rico 72, Virgin Islands = 78
+# https://www.nrcs.usda.gov/wps/portal/nrcs/detail/?cid=nrcs143_013696
+
+# Contiguous states
+contig <- data_int %>% filter(STATEFP != "02" & STATEFP != "15" & STATEFP != "60" & 
+                              STATEFP != "66" & STATEFP != "69" & STATEFP != "72" & 
+                              STATEFP != "78")
+
+# Others
+alaska <- data_int %>% filter(STATEFP == "02")
+hawaii <- data_int %>% filter(STATEFP == "15")
+# Note: No American Samoa, Guam, Mariana Islands, Puerto Rico, Virgin Islands in data.
+```
+
+We prepare three plots, one for each geography components. We add labels to our main plot. 
+
+```{r warning = FALSE, message = FALSE}
+library(ggplot2)
+library(ggthemes)
+
+# Plot contiguous states
+plot_main <- ggplot(data = contig) +
+  geom_sf(aes(fill = urban_any), size = 0.001) +
+  theme_map() +
+  coord_sf(crs = st_crs(2163), 
+           xlim = c(-2500000, 2500000), ylim = c(-2300000, 730000)) +
+  labs(title = "ACS and FCC Broadband Subscription Estimate Congruence by Tract", 
+       subtitle = "Tracts with incongruent ACS and FCCC estimates shown in grey.",
+       caption = "Note: FCC = Federal Communications Commission, December 2015. 
+                  ACS = American Community Survey, 2013-17.
+                  \nAlaska and Hawaii not to scale.") +
+  scale_fill_manual(name = "Urbanicity", 
+                    values = c("#fed98e", "#fe9929", "#d95f0e", "#993404"), 
+                    na.value = "#f0f0f0") +
+  theme(plot.title = element_text(size = 16, face = "bold"),
+        legend.title = element_text(size = 10, face = "bold"),
+        legend.text = element_text(size = 10),
+        legend.position = "top")
+
+# Plot Hawaii
+plot_hawaii <- ggplot(data = hawaii) +
+  geom_sf(aes(fill = urban_any), size = 0.001)  +
+  theme_map() +
+  coord_sf(crs = st_crs(4135), 
+           xlim = c(-161, -154), ylim = c(18, 23), expand = FALSE) +
+  scale_fill_manual(name = "Urbanicity", 
+                    values = c("#fed98e", "#fe9929", "#d95f0e", "#993404"), 
+                    na.value = "#f0f0f0") +
+  theme(legend.position = "none")
+
+# Plot Alaska
+plot_alaska <- ggplot(data = alaska) +
+  geom_sf(aes(fill = urban_any), size = 0.001) +
+  theme_map() +
+  coord_sf(crs = st_crs(3467), 
+           xlim = c(-2400000, 1600000), ylim = c(200000, 2500000), expand = FALSE) +
+  scale_fill_manual(name = "Urbanicity", 
+                    values = c("#fed98e", "#fe9929", "#d95f0e", "#993404"), 
+                    na.value = "#f0f0f0") +
+  theme(legend.position = "none")
+```
+
+To avoid having three separate graphics, we use <a href = "https://www.r-spatial.org/r/2018/10/25/ggplot2-sf-3.html" target = "_blank">this helpful tutorial</a> to show all three maps together.
+
+```{r fig.width = 17, fig.height = 17, fig.align = "center"}
+# Plot all
+plot_main +
+  annotation_custom(grob = ggplotGrob(plot_alaska),
+                    xmin = -3350000,
+                    xmax = -3350000 + (1600000 - (-2400000))/1.8,
+                    ymin = -2450000,
+                    ymax = -2450000 + (2500000 - 200000)/1.8) +
+  annotation_custom(grob = ggplotGrob(plot_hawaii),
+                    xmin = -1700000,
+                    xmax = -1700000 + (-154 - (-161))*230000,
+                    ymin = -2450000,
+                    ymax = -2450000 + (23 - 18)*230000)
+```
