@@ -1,8 +1,8 @@
 # SDAD work
 This repo contains snippets of the work I do at UVA BII SDAD.
 
-## Barriers to Remote Work, Education, and Telemental Health
-Constructing and mapping composite indices highlighting county-level access to remote services.<br>
+## Access to Remote Services Dashboard
+Constructing and mapping composite indices highlighting county-level relative access to remote work, remote education, and telemental health.<br>
 <a href = "http://gates.policy-analytics.net/" target = "_blank">Click here.</a><br>
 Data: Census ACS, CountyHealthRankings<br>
 Packages: shiny, dplyr, tidycensus, tigris, sf<br>
