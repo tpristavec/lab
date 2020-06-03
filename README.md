@@ -1,17 +1,23 @@
 # SDAD work
 This repo contains snippets of the work I do at UVA BII SDAD.
 
-## Broadband Coverage Comparison
-Comparing Federal Communications Commission and American Community Survey broadband coverage data.<br>
-<a href = "http://tpristavec.github.io/lab/bband/index.html" target = "_blank">Click here.</a><br>
-Data: Census ACS, FCC Form 477, USDA ERS<br>
-Packages: readr, dplyr, readxl, iRanges, tigris, tidycensus, sf, ggplot2, ggthemes<br>
+## Barriers to Remote Work, Education, and Telemental Health
+Constructing and mapping composite indices highlighting county-level access to remote services.<br>
+<a href = "http://gates.policy-analytics.net/" target = "_blank">Click here.</a><br>
+Data: Census ACS, CountyHealthRankings<br>
+Packages: shiny, dplyr, tidycensus, tigris, sf<br>
 
 ## Broadband Coverage Dashboard
 Comparing Federal Communications Commission and American Community Survey broadband coverage data.<br>
 <a href = "http://bband.policy-analytics.net" target = "_blank">Click here.</a><br>
 Data: Microsoft Airband Initiative, BroadbandNow.com, FCC Form 477, Census ACS<br>
 Packages: shiny, data.table, dplyr, tidycensus, tigris, sf<br>
+
+## Broadband Coverage Comparison
+Comparing Federal Communications Commission and American Community Survey broadband coverage data.<br>
+<a href = "http://tpristavec.github.io/lab/bband/index.html" target = "_blank">Click here.</a><br>
+Data: Census ACS, FCC Form 477, USDA ERS<br>
+Packages: readr, dplyr, readxl, iRanges, tigris, tidycensus, sf, ggplot2, ggthemes<br>
 
 ## Fairfax County Job Growth
 Plotting track-level job growth between 2009 and 2017 in Fairfax County, VA.<br>
