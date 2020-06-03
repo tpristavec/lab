@@ -5,13 +5,13 @@ This repo contains snippets of the work I do at UVA BII SDAD.
 Constructing and mapping composite indices highlighting county-level relative access to remote work, remote education, and telemental health.<br>
 <a href = "http://gates.policy-analytics.net/" target = "_blank">Click here.</a><br>
 Data: Census ACS, CountyHealthRankings<br>
-Packages: shiny, dplyr, tidycensus, tigris, sf<br>
+Packages: shiny, plotly, leaflet, dplyr, tidycensus, tigris, sf<br>
 
 ## Broadband Coverage Dashboard
 Comparing Federal Communications Commission and American Community Survey broadband coverage data.<br>
 <a href = "http://bband.policy-analytics.net" target = "_blank">Click here.</a><br>
 Data: Microsoft Airband Initiative, BroadbandNow.com, FCC Form 477, Census ACS<br>
-Packages: shiny, data.table, dplyr, tidycensus, tigris, sf<br>
+Packages: shiny, data.table, dplyr, leaflet, tidycensus, tigris, sf<br>
 
 ## Broadband Coverage Comparison
 Comparing Federal Communications Commission and American Community Survey broadband coverage data.<br>
