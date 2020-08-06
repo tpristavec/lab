@@ -1,11 +1,23 @@
 # SDAD work
 This repo contains snippets of the work I do at UVA BII SDAD.
 
+# Barriers to Health in Patrick County, VA Dashboard
+Informational dashboard with maps and coverage isochrones on various health topics.<br>
+<a href = "https://teja.shinyapps.io/patrickdash/" target = "_blank">Click here.</a><br>
+Data: CoreLogic, USDA Food Research Atlas, CommunityConnect, Homeland Infrastructure Foundation-Level Data, Census ACS<br>
+Packages: shiny, traveltime, leaflet, dplyr, tidycensus, tigris, sf<br>
+
 ## Access to Remote Services Dashboard
 Constructing and mapping composite indices highlighting county-level relative access to remote work, remote education, and telemental health.<br>
 <a href = "http://gates.policy-analytics.net/" target = "_blank">Click here.</a><br>
 Data: Census ACS, CountyHealthRankings<br>
 Packages: shiny, plotly, leaflet, dplyr, tidycensus, tigris, sf<br>
+
+## Fairfax County Labor Markets
+Exploring labor markets in Fairfax County, VA to better understand the landscape and barriers to economic opportunity for the county’s residents, businesses, and places<br>
+<a href = "https://dspg2020fairfax.netlify.app/" target = "_blank">Click here.</a><br>
+Data: LODES, Fortune 1000, VirginiaWorks, Census ACS<br>
+Packages: stplanr, sf, igraph, leaflet, dplyr<br>
 
 ## Broadband Coverage Dashboard
 Comparing Federal Communications Commission and American Community Survey broadband coverage data.<br>
