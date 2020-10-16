@@ -15,7 +15,7 @@ Packages: shiny, plotly, leaflet, dplyr, tidycensus, tigris, sf<br>
 
 ## Fairfax County Labor Markets
 Exploring labor markets in Fairfax County, VA to better understand the landscape and barriers to economic opportunity for the county’s residents, businesses, and places<br>
-<a href = "https://dspg2020fairfax.netlify.app/" target = "_blank">Click here.</a><br>
+<a href = "https://dspg-young-scholars-program.github.io/dspg20fairfax/" target = "_blank">Click here.</a><br>
 Data: LODES, Fortune 1000, VirginiaWorks, Census ACS<br>
 Packages: stplanr, sf, igraph, leaflet, dplyr<br>
 
