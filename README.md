@@ -14,10 +14,16 @@ Data: Census ACS, CountyHealthRankings<br>
 Packages: shiny, plotly, leaflet, dplyr, tidycensus, tigris, sf<br>
 
 ## Fairfax County Labor Markets
-Exploring labor markets in Fairfax County, VA to better understand the landscape and barriers to economic opportunity for the county’s residents, businesses, and places<br>
+Exploring labor markets in Fairfax County, VA to better understand the landscape and barriers to economic opportunity for the county’s residents, businesses, and places.<br>
 <a href = "https://dspg-young-scholars-program.github.io/dspg20fairfax/" target = "_blank">Click here.</a><br>
 Data: LODES, Fortune 1000, VirginiaWorks, Census ACS<br>
 Packages: stplanr, sf, igraph, leaflet, dplyr<br>
+
+## Virginia County Rurality Explorer
+Virginia county rurality according to six different definitions.<br>
+<a href = "https://teja.shinyapps.io/ruralapp/" target = "_blank">Click here.</a><br>
+Data: USDA, OMB, VDH, misc<br> 
+Packages: shiny, dplyr, tidycensus, tigris, sf<br> 
 
 ## Broadband Coverage Dashboard
 Comparing Federal Communications Commission and American Community Survey broadband coverage data.<br>
