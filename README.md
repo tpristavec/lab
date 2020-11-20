@@ -20,7 +20,7 @@ Data: LODES, Fortune 1000, VirginiaWorks, Census ACS<br>
 Packages: stplanr, sf, igraph, leaflet, dplyr<br>
 
 ## Virginia County Rurality Explorer
-Virginia county rurality according to six different definitions.<br>
+Virginia county rurality according to seven different definitions.<br>
 <a href = "https://teja.shinyapps.io/ruralapp/" target = "_blank">Click here.</a><br>
 Data: USDA, OMB, VDH, misc<br> 
 Packages: shiny, dplyr, tidycensus, tigris, sf<br> 
