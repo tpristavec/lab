@@ -1,6 +1,12 @@
 # SDAD work
 This repo contains snippets of the work I do at UVA BII SDAD.
 
+## Access Barriers to Health in Rural Virginia Counties
+Dashboards with maps, access isochrones, and coverage calculations on various health issues for rural Virginia counties.<br>
+<a href = "https://dspgtools.shinyapps.io/ruralvirginia/" target = "_blank">Click here.</a><br>
+Data: CoreLogic, MarketMaker, USDA Food Research Atlas, CommunityConnect, Homeland Infrastructure Foundation-Level Data, Census ACS<br>
+Packages: shiny, osmr, leaflet, dplyr, tidycensus, tigris, sf<br>
+
 ## Virginia County Rurality Explorer
 Virginia county rurality according to seven different definitions.<br>
 <a href = "https://teja.shinyapps.io/ruralapp/" target = "_blank">Click here.</a><br>
