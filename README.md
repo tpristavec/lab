@@ -1,6 +1,12 @@
 # SDAD work
 This repo contains snippets of the work I do at UVA BII SDAD.
 
+## Economic Mobility Data Infrastructure
+Measuring and mapping county-level indicators of seven community capitals.<br>
+<a href = "https://uva-bi-sdad.github.io/capitals/" target = "_blank">Click here.</a><br>
+Data: National Census of Agriculture, Centers for Disease Control and Prevention, CountyHealthRankings, Brookings Debt in America, Homeland Infrastructure Foundation-Level Data, Census ACS<br>
+Packages: shiny, leaflet, dplyr, tidycensus, tigris, sf, lodesr<br>
+
 ## Access Barriers to Health in Rural Virginia Counties
 Dashboards with maps, access isochrones, and coverage calculations on various health issues for rural Virginia counties.<br>
 <a href = "https://dspgtools.shinyapps.io/ruralvirginia/" target = "_blank">Click here.</a><br>
