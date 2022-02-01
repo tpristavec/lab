@@ -15,7 +15,7 @@ Packages: shiny, osmr, leaflet, dplyr, tidycensus, tigris, sf<br>
 
 ## Virginia County Rurality Explorer
 Virginia county rurality according to seven different definitions.<br>
-<a href = "https://teja.shinyapps.io/ruralapp/" target = "_blank">Click here.</a><br>
+<a href = "https://teja.shinyapps.io/ruralvirginia/" target = "_blank">Click here.</a><br>
 Data: USDA, OMB, VDH, misc<br> 
 Packages: shiny, dplyr, tidycensus, tigris, sf<br> 
 
